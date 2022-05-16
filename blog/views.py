@@ -7,12 +7,12 @@ def get_related_posts_count(tag):
     return tag.posts.count()
 
 
-def serialize_post_optimized(post):
+def serialize_post_optimized(post, with_comments=False):
     return {
         'title': post.title,
         'teaser_text': post.text[:200],
         'author': post.author.username,
-        'comments_amount': len(Comment.objects.filter(post=post)),
+        'comments_amount': post.comments_count if with_comments else 0,
         'image_url': post.image.url if post.image else None,
         'published_at': post.published_at,
         'slug': post.slug,
@@ -48,7 +48,9 @@ def index(request):
         likes_count=Count('likes')
     ).order_by('-likes_count').prefetch_related('author')[:5]
 
-    most_fresh_posts = Post.objects.all().prefetch_related('author')[:5]
+    most_fresh_posts = Post.objects.annotate(
+        comments_count=Count('comments')
+    ).order_by('-published_at').prefetch_related('author')[:5]
 
     most_popular_tags = Tag.objects.annotate(
         posts_count=Count('posts')).order_by('-posts_count')[:5]
@@ -58,7 +60,7 @@ def index(request):
             serialize_post_optimized(post) for post in most_popular_posts
         ],
         'page_posts': [
-            serialize_post_optimized(post) for post in most_fresh_posts
+            serialize_post_optimized(post, True) for post in most_fresh_posts
         ],
         'popular_tags': [
             serialize_tag(tag) for tag in most_popular_tags

@@ -3,6 +3,11 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 
 
+class PostQuerySet(models.QuerySet):
+    def year(self, year):
+        return self.filter(published_at__year=year).order_by('published_at')
+
+
 class Post(models.Model):
     title = models.CharField('Заголовок', max_length=200)
     text = models.TextField('Текст')
@@ -25,20 +30,27 @@ class Post(models.Model):
         related_name='posts',
         verbose_name='Теги')
 
-    def __str__(self):
-        return self.title
-
-    def get_absolute_url(self):
-        return reverse('post_detail', args={'slug': self.slug})
+    objects = PostQuerySet.as_manager()
 
     class Meta:
         ordering = ['-published_at']
         verbose_name = 'пост'
         verbose_name_plural = 'посты'
 
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('post_detail', args={'slug': self.slug})
+
 
 class Tag(models.Model):
     title = models.CharField('Тег', max_length=20, unique=True)
+
+    class Meta:
+        ordering = ['title']
+        verbose_name = 'тег'
+        verbose_name_plural = 'теги'
 
     def __str__(self):
         return self.title
@@ -48,11 +60,6 @@ class Tag(models.Model):
 
     def get_absolute_url(self):
         return reverse('tag_filter', args={'tag_title': self.slug})
-
-    class Meta:
-        ordering = ['title']
-        verbose_name = 'тег'
-        verbose_name_plural = 'теги'
 
 
 class Comment(models.Model):
@@ -69,10 +76,10 @@ class Comment(models.Model):
     text = models.TextField('Текст комментария')
     published_at = models.DateTimeField('Дата и время публикации')
 
-    def __str__(self):
-        return f'{self.author.username} under {self.post.title}'
-
     class Meta:
         ordering = ['published_at']
         verbose_name = 'комментарий'
         verbose_name_plural = 'комментарии'
+
+    def __str__(self):
+        return f'{self.author.username} under {self.post.title}'
